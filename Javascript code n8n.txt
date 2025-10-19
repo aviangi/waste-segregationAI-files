@@ -1,0 +1,37 @@
+const item = items[0].json;
+
+// Safely read the 'output' property from the previous node
+let inputMessage = item.output || item.final_message || ''; 
+
+// 1. Sanitize and Convert to Pure HTML
+if (typeof inputMessage === 'string' && inputMessage.length > 0) {
+    
+    // 💥 NEW FIX: Convert <ul> and <li> to plain text/HTML breaks
+    inputMessage = inputMessage.replace(/<ul[^>]*>/g, '<br>'); // Replace <ul> with a line break
+    inputMessage = inputMessage.replace(/<\/ul>/g, '<br><br>'); // Replace </ul> with two line breaks
+    inputMessage = inputMessage.replace(/<li[^>]*>/g, '— '); // Replace <li> with a list dash and space
+    inputMessage = inputMessage.replace(/<\/li>/g, '<br>'); // Replace </li> with a line break
+
+    // FIX 3 (Previous): Remove the unsupported <span> tags
+    inputMessage = inputMessage.replace(/<span[^>]*>|<\/span>/g, '');
+    
+    // FIX 2 (Previous): Replace the JSON newline sequence (\n) with a space 
+    inputMessage = inputMessage.replace(/\\n/g, ' '); 
+    
+    // FIX 1 (Previous): Decode the HTML entity for the en-dash
+    inputMessage = inputMessage.replace(/&ndash;/g, '—'); 
+    
+    // Trim any leading/trailing whitespace
+    inputMessage = inputMessage.trim();
+}
+
+// 2. Add Fallback
+let finalMessage = inputMessage;
+// ... (omitted fallback code for brevity)
+
+// 3. Return the Cleaned HTML
+return [{
+    json: {
+        final_message: finalMessage 
+    }
+}];
