@@ -1,0 +1,189 @@
+{
+  "name": "n8ntelegram workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {
+          "download": true
+        }
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -352,
+        -48
+      ],
+      "id": "193552c4-95ae-4d7b-8d3b-45ddd9540e78",
+      "name": "Telegram Trigger",
+      "webhookId": "31a4b01b-58d7-4178-8057-774a7790c5ac",
+      "credentials": {
+        "telegramApi": {
+          "id": "qBbVoEUqzHaZn1XT",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.photo }}",
+        "options": {
+          "systemMessage": "Please use HTML in your response (no markdown) and only use the following HTML tags in your response : \n<i> or <em> for italic text\n<s>, <strike>, or <del> for <s>strikethrough</s> text\n<u> or <ins> (Underline)\nABSOLUTELY FORBIDDEN TAGS:\nDO NOT use ANY other HTML tags, including but not limited to: <br>, <p>, <h1>, <h2>, <h3>, <div>, <span>, <table>, <ul>, <li>, also don't use any custom placeholder like $BR$, [BR], or \\n (as a literal string) for line breaks or standard HTML list structures.\nyou are the professional waste segregator, Analyze and identify the items correctly ( multiple items) which are in the focus of the image(not too far) and identify the type of waste. For the waste item identified, provide a list of categories it falls under from the following list: Organic wastes, non-organic wastes, degradable wastes, non-degradable wastes, plastic wastes, non-plastic wastes, recyclable wastes, non-recyclable wastes, hazardous waste, wet waste, electronic waste, dry waste, chemical waste then a summary in one line instead of a detailed breakdown in the response.\nIf there is any living being in the image scan the cloths the being is wearing and tell its type of waste"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        -32
+      ],
+      "id": "e8004ca8-ed9e-4ffb-88f3-14d264a515e0",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        208
+      ],
+      "id": "16478eac-9938-4bc6-a4ef-52296d1426eb",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "pc1nWPNkEYsGMOmy",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "notes": "ABSOLUTELY FORBIDDEN TAGS:\nDO NOT use ANY other HTML tags, including but not limited to: <br>, <p>, <h1>, <h2>, <h3>, <div>, <span>, <table>, <ul>, <li>, also don't use any custom placeholder like $BR$, [BR], or \\n (as a literal string) for line breaks or standard HTML list structures.\n"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.final_message }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        512,
+        -16
+      ],
+      "id": "e7c38031-371f-4104-b9d7-358ddf63f760",
+      "name": "Send a text message1",
+      "webhookId": "22814b47-9191-4b7b-bb99-bf8b7d7bd402",
+      "credentials": {
+        "telegramApi": {
+          "id": "qBbVoEUqzHaZn1XT",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Start of your Code in JavaScript node\n\nconst items = $input.all(); // Use the standard way to get input items in a modern n8n node\n\nfunction finalHtmlStrip(items) {\n    const item = items[0].json;\n\n    // 1. SAFELY READ INPUT\n    let finalMessage = item.output || item.final_message || ''; // Ensure 'let' is used for re-assignment later\n    \n    // ... all of your existing logic for the ALLOWED_TAGS_REGEX, FIX 1, FIX 2, etc. ...\n\n    // IMPORTANT: Integrate the fix for the $BR$ issue here as well (using Option 2 from the previous response)\n    if (typeof finalMessage === 'string' && finalMessage.length > 0) {\n        // PRELIMINARY FIX: Convert the AI's unwanted $BR$ output to your code's expected $$BR$$\n        finalMessage = finalMessage.replace(/\\$BR\\$/g, ' $$BR$$ '); \n\n        // FIX 1: Normalize ALL unwanted newline characters AND existing <br> tags to a single space, and use the placeholder.\n        const ALLOWED_TAGS_REGEX = /^(b|i|u|s|em|strong|code|pre|a|tg-spoiler)$/i; // You may want to define this outside the function\n\n        finalMessage = finalMessage.replace(/(<br>|\\r\\n|\\n|\\r)/gim, ' $$BR$$ '); \n        \n        // ... rest of your original cleaning logic ...\n\n        // FIX 5: FINAL CONSOLIDATION AND TRIM\n        \n        // 1. Crush multiple placeholders and surrounding spaces into a single placeholder.\n        finalMessage = finalMessage.replace(/(\\s*?\\$\\$BR\\$\\$\\s*?){2,}/g, ' $$BR$$ '); \n        \n        // 2. Remove leading/trailing spaces and placeholders.\n        finalMessage = finalMessage.replace(/^( |\\$\\$BR\\$\\$)+/i, ''); \n        finalMessage = finalMessage.replace(/( |\\$\\$BR\\$\\$)+$/i, ''); \n        \n        // 3. ***CRITICAL FIX: Correctly replace the placeholder with <br>***\n        finalMessage = finalMessage.replace(/\\$\\$BR\\$\\$/g, '<br>'); \n        \n        finalMessage = finalMessage.trim();\n    }\n\n    // 3. ADD FALLBACK MESSAGE\n    if (finalMessage.length === 0) {\n        finalMessage = \"The AI model provided an empty or unparsable response. Please check the logs.\";\n    }\n    \n    // 4. RETURN THE CLEANED MESSAGE\n    return [{\n        json: {\n            final_message: finalMessage \n        }\n    }];\n}\n\n// Execute the function and return the result\nreturn finalHtmlStrip(items);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        -16
+      ],
+      "id": "abfb6920-936f-4464-9e54-c846726b4c14",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id }}",
+        "contextWindowLength": 1
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        48,
+        224
+      ],
+      "id": "04bdb3d8-a3f8-49cd-80dc-682c7ac13df9",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e12bbd5c-4f6f-4a31-b986-6625635bcf27",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bffb7c0d435ed2da98e64bb6cdd697749a87bf3ba6729684ca0a3f264f035431"
+  },
+  "id": "q9jTpb8MNX2NiT8V",
+  "tags": []
+}

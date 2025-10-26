@@ -1,0 +1,54 @@
+// Start of your Code in JavaScript node
+
+const items = $input.all(); // Use the standard way to get input items in a modern n8n node
+
+function finalHtmlStrip(items) {
+    const item = items[0].json;
+
+    // 1. SAFELY READ INPUT
+    let finalMessage = item.output || item.final_message || ''; // Ensure 'let' is used for re-assignment later
+    
+    // ... all of your existing logic for the ALLOWED_TAGS_REGEX, FIX 1, FIX 2, etc. ...
+
+    // IMPORTANT: Integrate the fix for the $BR$ issue here as well (using Option 2 from the previous response)
+    if (typeof finalMessage === 'string' && finalMessage.length > 0) {
+        // PRELIMINARY FIX: Convert the AI's unwanted $BR$ output to your code's expected $$BR$$
+        finalMessage = finalMessage.replace(/\$BR\$/g, ' $$BR$$ '); 
+
+        // FIX 1: Normalize ALL unwanted newline characters AND existing <br> tags to a single space, and use the placeholder.
+        const ALLOWED_TAGS_REGEX = /^(b|i|u|s|em|strong|code|pre|a|tg-spoiler)$/i; // You may want to define this outside the function
+
+        finalMessage = finalMessage.replace(/(<br>|\r\n|\n|\r)/gim, ' $$BR$$ '); 
+        
+        // ... rest of your original cleaning logic ...
+
+        // FIX 5: FINAL CONSOLIDATION AND TRIM
+        
+        // 1. Crush multiple placeholders and surrounding spaces into a single placeholder.
+        finalMessage = finalMessage.replace(/(\s*?\$\$BR\$\$\s*?){2,}/g, ' $$BR$$ '); 
+        
+        // 2. Remove leading/trailing spaces and placeholders.
+        finalMessage = finalMessage.replace(/^( |\$\$BR\$\$)+/i, ''); 
+        finalMessage = finalMessage.replace(/( |\$\$BR\$\$)+$/i, ''); 
+        
+        // 3. ***CRITICAL FIX: Correctly replace the placeholder with <br>***
+        finalMessage = finalMessage.replace(/\$\$BR\$\$/g, '<br>'); 
+        
+        finalMessage = finalMessage.trim();
+    }
+
+    // 3. ADD FALLBACK MESSAGE
+    if (finalMessage.length === 0) {
+        finalMessage = "The AI model provided an empty or unparsable response. Please check the logs.";
+    }
+    
+    // 4. RETURN THE CLEANED MESSAGE
+    return [{
+        json: {
+            final_message: finalMessage 
+        }
+    }];
+}
+
+// Execute the function and return the result
+return finalHtmlStrip(items);
